@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id               String   @id @default(uuid())
+  title            String
+  subjectWeights   Json     // Map: { "Mathe": 0.2, "Biologie": 0.1, ... }
+  split            String   @default("train") // "train" | "test" – Duelle nur aus train
+  createdAt        DateTime @default(now())
+  choicesAsLeft    Choice[] @relation("LeftCourse")
+  choicesAsRight   Choice[] @relation("RightCourse")
+  choicesAsChosen  Choice[] @relation("ChosenCourse")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  choices   Choice[]
+  profile   UserProfile?
+}
+
+model Choice {
+  id             String    @id @default(uuid())
+  userId         String
+  leftCourseId   String
+  rightCourseId  String
+  chosenCourseId String?   // null bei isTie
+  isTie          Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leftCourse     Course    @relation("LeftCourse", fields: [leftCourseId], references: [id])
+  rightCourse    Course    @relation("RightCourse", fields: [rightCourseId], references: [id])
+  chosenCourse   Course?   @relation("ChosenCourse", fields: [chosenCourseId], references: [id])
+}
+
+model UserProfile {
+  userId         String   @id
+  interestWeights Json    // Map Subject -> Weight (normalized)
+  modelMeta      Json     // e.g. { method: "pairwise_logit", nChoices: 10, lambda: 0.1 }
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
